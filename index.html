@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>PetBot — Technical Specification</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>body{max-width:900px;margin:0 auto;padding:40px 24px;font-family:system-ui,-apple-system,sans-serif;line-height:1.62;color:#15212a;background:#fafbfb}h1{font-size:2.3rem;letter-spacing:-.02em}h2{border-bottom:2px solid #e2e8e7;padding-bottom:.2em;margin-top:2.1em;letter-spacing:-.01em}h3{color:#0a4c47}table{border-collapse:collapse;width:100%;margin:1em 0;display:block;overflow-x:auto;font-size:.93em}th,td{border:1px solid #e2e8e7;padding:8px 12px;text-align:left;vertical-align:top}th{background:#f4f7f6}code{background:#e4f0ee;padding:.1em .4em;border-radius:4px;color:#0a4c47;font-size:.9em}pre{background:#0f1a20;color:#dfe8e6;padding:14px;border-radius:10px;overflow-x:auto}a{color:#0e7c74}img{max-width:100%}blockquote{border-left:3px solid #0e7c74;background:#e4f0ee;margin:1em 0;padding:.5em 1em;border-radius:0 8px 8px 0}#TOC{background:#fff;border:1px solid #e2e8e7;border-radius:12px;padding:12px 24px}#TOC a{text-decoration:none}</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">PetBot — Technical Specification</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#petbot--technical-specification"
+id="toc-petbot--technical-specification">PetBot — Technical
+Specification</a>
+<ul>
+<li><a href="#1-overview" id="toc-1-overview">1. Overview</a></li>
+<li><a href="#2-system-architecture" id="toc-2-system-architecture">2.
+System architecture</a></li>
+<li><a href="#3-learning-system--ppo" id="toc-3-learning-system--ppo">3.
+Learning system — PPO</a></li>
+<li><a href="#4-observation--feature-space"
+id="toc-4-observation--feature-space">4. Observation / feature
+space</a></li>
+<li><a href="#5-action-space" id="toc-5-action-space">5. Action
+space</a></li>
+<li><a href="#6-reward--engagement" id="toc-6-reward--engagement">6.
+Reward — engagement</a></li>
+<li><a href="#7-what-it-learns--how" id="toc-7-what-it-learns--how">7.
+What it learns / how</a></li>
+<li><a href="#8-ml-infrastructure" id="toc-8-ml-infrastructure">8. ML
+infrastructure</a></li>
+<li><a href="#9-bill-of-materials-v0" id="toc-9-bill-of-materials-v0">9.
+Bill of materials (V0)</a></li>
+<li><a href="#10-roadmap" id="toc-10-roadmap">10. Roadmap</a></li>
+<li><a href="#11-demos" id="toc-11-demos">11. Demos</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="petbot--technical-specification">PetBot — Technical
+Specification</h1>
+<p><strong>An autonomous mobile robot that plays with a cat like
+interactive prey, and learns how <em>your</em> cat likes to
+play.</strong></p>
+<p>PetBot is a small, overhead-camera-instrumented, differential-drive
+"puck" wearing a soft feather lure. An ESP32 drives the wheels; a Mac
+(later, the cloud) is the ML brain. Rather than replaying a fixed
+library of human-authored moves, PetBot treats <em>motion itself</em> as
+the prey and <strong>learns the individual cat</strong> from how that
+cat responds. The deliverable is not the robot — it is the closed
+learning loop:</p>
+<blockquote>
+<p><strong>robot acts → cat responds → response is measured → data →
+policy improves → redeploy.</strong></p>
+</blockquote>
+<hr />
+<blockquote>
+<p><strong>Status.</strong> This document specifies the <strong>target
+milestone product</strong> — the north star the system is built toward,
+written in present tense. As of this writing, the <strong>software loop
+is built and unit-tested</strong> end to end: perception (AprilTag pose
++ pixel→floor homography, cat tracking), the world-state builder, the
+UDP brain↔︎robot link, the on-robot firmware (physics-first
+<code>MotionCommand</code> executor, encoder PID, IMU, on-device safety
+envelope), and a robot emulator that closes the full Mac↔︎robot loop in a
+self-test. The <strong>V0 hardware is in active build</strong>
+(drivetrain and electronics ordered/assembling). The learning system
+described in §3 is the specified target; V0's first on-hardware learning
+task is predictive dynamics, which becomes the simulator the policy
+later trains inside. Every architectural seam below already exists as a
+verified contract in <code>brain/contracts/</code>.</p>
+</blockquote>
+<hr />
+<h2 id="1-overview">1. Overview</h2>
+<p>Cats are ambush predators wired to chase <em>motion patterns</em>,
+not shapes. A feather that darts, freezes, twitches, and flees the
+instant it is watched is prey; the same feather sitting still is
+furniture. PetBot's core idea follows directly: <strong>the trajectory
+is the bait.</strong> The robot's job is to produce physical motion — a
+sequence of velocities and accelerations — that a <em>specific</em> cat
+finds worth chasing, and to keep finding better motion as it learns that
+cat.</p>
+<p>This produces three explicit project goals, in priority order:</p>
+<ol type="1">
+<li><strong>Learn ML infrastructure / ML-systems engineering.</strong>
+The primary goal. PetBot is an end-to-end MLOps sandbox (§8): data
+ingestion, time-synchronization, dataset versioning, feature stores,
+experiment tracking, a model registry, offline evaluation gates, drift
+monitoring, and staged OTA deployment — all owned by the builder, at a
+scale small enough to understand every stage.</li>
+<li><strong>Learn robotics.</strong> The full autonomy stack in
+miniature — perception → localization → state estimation → prediction →
+policy → control — the same backbone as a self-driving car, scaled to a
+living room.</li>
+<li><strong>Build a genuinely cool adaptive product.</strong> A creature
+that measurably learns <em>your</em> cat, with a credible path from one
+robot to a multi-home fleet.</li>
+</ol>
+<p>Everything in this spec serves the loop. The robot acts (§5), the cat
+responds and is measured (§4, §6), the measurements become versioned
+data (§8), a policy improves (§3, §7), and the improved policy is
+redeployed to the fleet.</p>
+<hr />
+<h2 id="2-system-architecture">2. System architecture</h2>
+<p>PetBot implements the canonical autonomy stack, split cleanly across
+two compute domains and four durable software contracts.</p>
+<pre><code>Perception  →  World-State  →  Policy  →  Control  →  Robot moves  →  Cat responds  ┐
+ (pixels)      (physics)      (v, ω)     (PID/PWM)                                    │
+     ▲                                                                                │
+     └────────────────────────────── the cat is back in view ─────────────────────────┘</code></pre>
+<h3 id="21-perception-and-the-two-cameras">2.1 Perception and the two
+cameras</h3>
+<p><strong>Overhead "privileged" camera (in the loop).</strong> A
+ceiling/corner-mounted webcam (Logitech C922x, 720p @ 60 fps) looks down
+on a bounded play area. This camera is <em>privileged</em>: it sees the
+whole scene from above and produces near-ground-truth measurement.</p>
+<ul>
+<li><strong>Robot pose</strong> comes from an <strong>AprilTag</strong>
+(ArUco 36h11) mounted flat on the robot's top deck — an unambiguous,
+low-jitter position and heading every frame.</li>
+<li><strong>Arena calibration</strong> is a per-placement
+<strong>homography</strong> mapping image pixels to metric floor
+coordinates (meters), plus fixed <strong>anchor tags</strong> at known
+floor positions so a bumped camera re-solves its own pose and rebuilds
+the homography automatically.</li>
+<li><strong>Cat tracking</strong> (YOLO on the Mac's GPU) yields the
+cat's floor position; velocity, acceleration, heading, and gaze are
+derived downstream.</li>
+</ul>
+<p><strong>Onboard camera (egocentric, not yet in the loop).</strong> A
+forward-facing ESP32-CAM streams egocentric video. In V0 it is a
+<strong>passive logger</strong>. Its long-term role is
+<strong>privileged supervision</strong>: the overhead camera's exact
+positions automatically label the onboard camera's frames, generating —
+for free, during normal play — a large egocentric dataset with which
+onboard perception is later trained to reproduce the overhead ground
+truth. This is what eventually lets the robot leave the overhead camera
+behind (V3).</p>
+<h3 id="22-two-compute-domains">2.2 Two compute domains</h3>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>Hardware</th>
+<th>Runs</th>
+<th>Rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Robot</strong></td>
+<td>ESP32 (+ TB6612 driver, MPU-6050 IMU, wheel encoders)</td>
+<td>Motion executor, PID, odometry, safety envelope</td>
+<td><strong>100+ Hz</strong></td>
+</tr>
+<tr>
+<td><strong>Brain</strong></td>
+<td>Mac (later cloud)</td>
+<td>Perception, world-state, policy, logging, training</td>
+<td><strong>2–5 Hz</strong> (control)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Decoupled control</strong> is why a cheap puck feels crisp.
+The Mac's policy decides <em>which</em> motion to make at 2–5 Hz over
+Wi-Fi; the ESP32 <em>executes</em> that motion at 100+ Hz using local
+encoder + IMU feedback and never waits on the network. Commands and
+telemetry ride <strong>UDP</strong> (low latency, loss-tolerant); at
+session start a round-trip <strong><code>ClockSync</code></strong>
+handshake lands every stream on one common clock.</p>
+<h3 id="23-safety-envelope--below-the-policy">2.3 Safety envelope —
+below the policy</h3>
+<p>The learned policy <strong>never</strong> gets unrestricted actuator
+authority. A deterministic <strong>safety envelope runs on the ESP32,
+beneath the policy</strong>: hard caps on linear/angular speed and
+acceleration, a PWM ceiling, and a <strong>watchdog</strong> that brakes
+the motors if commands stop arriving. Safety is independent of the Mac
+and independent of the learning; a buggy or adversarial policy output is
+clamped in hardware before it can reach a motor.</p>
+<h3 id="24-the-four-contracts">2.4 The four contracts</h3>
+<p>The system is organized around four seams
+(<code>brain/contracts/</code>). Getting these clean makes every future
+upgrade — onboard perception, a second robot, cloud training, OTA — a
+<em>localized swap</em> rather than a rewrite.</p>
+<table>
+<thead>
+<tr>
+<th>Contract</th>
+<th>Seam</th>
+<th>Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>world_state</code></strong></td>
+<td>perception ↔︎ policy</td>
+<td>The policy <strong>never sees pixels</strong> — only a
+<code>WorldState</code> of measurable physics. Makes the camera swap
+local and cross-device data poolable.</td>
+</tr>
+<tr>
+<td><strong><code>messages</code></strong></td>
+<td>brain ↔︎ robot</td>
+<td>Physics-first <code>MotionCommand</code> down,
+<code>Telemetry</code> up, over UDP.</td>
+</tr>
+<tr>
+<td><strong><code>session</code></strong></td>
+<td>system ↔︎ store</td>
+<td>Multi-stream, time-aligned, versioned episodes with fleet-ready
+keys.</td>
+</tr>
+<tr>
+<td><strong><code>policy</code></strong></td>
+<td>learning ↔︎ serving</td>
+<td>Swappable, versioned policy/dynamics artifacts (enables registry +
+OTA).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-learning-system--ppo">3. Learning system — PPO</h2>
+<h3 id="31-physics-first-behaviors-emerge">3.1 Physics-first: behaviors
+emerge</h3>
+<p>The learned action space is <strong>continuous physical
+control</strong> — target velocities over a short horizon — <em>not</em>
+a menu of named behaviors. There is no <code>flee</code>,
+<code>feint</code>, <code>freeze-burst</code>,
+<code>peek-retreat</code>, or <code>allow-capture</code> in the action
+vocabulary. Those are <strong>emergent</strong>: they arise from the
+continuous control space and are only ever used afterward as analysis
+labels. We commit to this because we <em>do not know in advance</em>
+which motions engage a given cat; hard-coding a behavior menu would
+foreclose exactly the discovery the project exists to make.</p>
+<h3 id="32-rl-formulation">3.2 RL formulation</h3>
+<p>PetBot is a <strong>POMDP</strong> (the true cat state — hunger,
+arousal, intent — is never directly observed):</p>
+<ul>
+<li><strong>Observation</strong> <code>o_t</code>: the physics-only
+feature vector of §4, stacked over a short history window.</li>
+<li><strong>Action</strong> <code>a_t</code>: a continuous
+<code>MotionCommand</code> (§5).</li>
+<li><strong>Reward</strong> <code>r_t</code>: the windowed engagement
+signal of §6, with safety overrides.</li>
+<li><strong>Policy</strong> <code>π_θ(a | o)</code>: the
+<strong>actor</strong>.</li>
+<li><strong>Value</strong> <code>V_φ(o)</code>: the
+<strong>critic</strong>, estimating expected return.</li>
+</ul>
+<h3 id="33-ppo-specifics">3.3 PPO specifics</h3>
+<p>The target learning method is <strong>Proximal Policy
+Optimization</strong> — on-policy actor-critic.</p>
+<ul>
+<li><strong>Clipped surrogate objective.</strong> Updates maximize
+<code>min( ρ_t·Â_t , clip(ρ_t, 1−ε, 1+ε)·Â_t )</code>, where
+<code>ρ_t = π_θ(a_t|o_t) / π_θ_old(a_t|o_t)</code> is the probability
+ratio and <code>ε ≈ 0.2</code>. Clipping bounds how far each update can
+move the policy, preventing the destructive large steps that make naive
+policy gradients unstable.</li>
+<li><strong>Generalized Advantage Estimation (GAE)</strong> with
+<code>λ ≈ 0.95</code>, <code>γ ≈ 0.99</code>, trading bias against
+variance in the advantage estimate <code>Â_t</code>.</li>
+<li><strong>Composite loss:</strong> clipped policy loss +
+value-function loss (MSE of <code>V_φ</code> against returns) + an
+<strong>entropy bonus</strong> to sustain exploration.</li>
+<li><strong>Multiple minibatch epochs</strong> per collected rollout (≈
+4–10 epochs, minibatches of ≈ 64), reusing each batch of on-policy data
+before discarding it.</li>
+<li><strong>Continuous actions via a Gaussian policy:</strong> the actor
+outputs a state-dependent mean <code>μ_θ(o)</code> and a learned
+(state-independent) log-standard-deviation per action dimension; actions
+are sampled <code>a ~ N(μ_θ(o), σ²)</code> and squashed into the safe
+range.</li>
+</ul>
+<p><strong>Network.</strong> Both actor and critic are MLPs over the
+stacked observation: <strong>2–3 hidden layers × 256 units</strong>,
+<code>tanh</code> activations, a shared trunk with separate heads. The
+observation is low-dimensional physics (§4), so a modest MLP is
+appropriate — there are no pixels at this interface.</p>
+<p><strong>Why PPO.</strong> It is stable and forgiving of
+hyperparameters (the clip keeps it from diverging), sample-efficient
+enough for real-world use, natively handles <strong>continuous
+control</strong>, and is a proven, well-understood workhorse for
+<strong>sim-to-real</strong> transfer — the exact regime PetBot operates
+in.</p>
+<h3 id="34-sample-efficiency-and-safety--model-based-rl">3.4 Sample
+efficiency and safety — model-based RL</h3>
+<p>We cannot run millions of real cat interactions. PetBot therefore
+trains PPO <strong>primarily inside a learned dynamics/world
+model</strong>, not on the live cat:</p>
+<ol type="1">
+<li><strong>Fit a dynamics model</strong> from the privileged
+real-episode dataset — predict the next robot state (and short-horizon
+cat response) from history + a candidate action. This is exactly V0's
+first on-hardware learning task, and it becomes the simulator PPO trains
+in.</li>
+<li><strong>Train PPO in the model</strong> under <strong>domain
+randomization</strong> — randomized command latency, wheel slip,
+tracking noise, and dynamics parameters — so the policy is robust when
+transferred to the real robot.</li>
+<li><strong>Fine-tune online, briefly,</strong> on the real cat, always
+beneath the §2.3 safety envelope.</li>
+</ol>
+<p>This reconciles a data-first pipeline with RL: the dynamics model
+earns its keep first as an analysis tool, then as the environment the
+policy is grown inside.</p>
+<h3 id="35-global-prior--per-cat-personalization">3.5 Global prior +
+per-cat personalization</h3>
+<p>A <strong>shared policy</strong> is trained across the whole fleet —
+many cats, homes, and robots — capturing what tends to engage cats in
+general. A <strong>new cat starts from this global prior</strong> and
+specializes quickly via lightweight per-cat adaptation (fine-tuning
+and/or context conditioning on a per-cat identity embedding). This is
+the data flywheel of §7: the fleet lifts the prior; each robot
+personalizes locally.</p>
+<hr />
+<h2 id="4-observation--feature-space">4. Observation / feature
+space</h2>
+<p>The observation is <strong>measurable physics only</strong>, drawn
+directly from <code>WorldState</code>
+(<code>brain/contracts/world_state.py</code>). There are <strong>no
+semantic mood labels</strong> (no <code>cat_is_shy</code>) — tendencies
+are learned implicitly from history. A single frame cannot tell
+"stalking" from "losing interest," so the policy consumes a
+<strong>stacked N-frame history window</strong> (<code>N ≈ 8–16</code>,
+≈ 2–5 Hz).</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Field</th>
+<th>Units</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cat</strong></td>
+<td><code>x, y</code></td>
+<td>m (floor frame)</td>
+<td>tracker</td>
+</tr>
+<tr>
+<td></td>
+<td><code>vx, vy</code></td>
+<td>m/s</td>
+<td>derived</td>
+</tr>
+<tr>
+<td></td>
+<td><code>ax, ay</code></td>
+<td>m/s²</td>
+<td>derived</td>
+</tr>
+<tr>
+<td></td>
+<td><code>speed</code></td>
+<td>m/s</td>
+<td>derived</td>
+</tr>
+<tr>
+<td></td>
+<td><code>heading</code></td>
+<td>rad</td>
+<td>body facing (if known)</td>
+</tr>
+<tr>
+<td></td>
+<td><code>head_direction</code> (gaze)</td>
+<td>rad</td>
+<td>where the cat is looking</td>
+</tr>
+<tr>
+<td></td>
+<td><code>attending_robot</code></td>
+<td>bool</td>
+<td>robot in the cat's FOV</td>
+</tr>
+<tr>
+<td></td>
+<td><code>visible</code></td>
+<td>bool</td>
+<td>in view / not occluded</td>
+</tr>
+<tr>
+<td><strong>Robot</strong></td>
+<td><code>x, y</code></td>
+<td>m</td>
+<td>AprilTag pose</td>
+</tr>
+<tr>
+<td></td>
+<td><code>heading</code></td>
+<td>rad</td>
+<td>AprilTag pose</td>
+</tr>
+<tr>
+<td></td>
+<td><code>v</code></td>
+<td>m/s</td>
+<td>odometry</td>
+</tr>
+<tr>
+<td></td>
+<td><code>omega</code></td>
+<td>rad/s</td>
+<td>odometry</td>
+</tr>
+<tr>
+<td><strong>Relative</strong></td>
+<td><code>distance</code></td>
+<td>m</td>
+<td>cat ↔︎ robot</td>
+</tr>
+<tr>
+<td></td>
+<td><code>relative_bearing</code></td>
+<td>rad</td>
+<td>cat direction from robot</td>
+</tr>
+<tr>
+<td></td>
+<td><code>closing_velocity</code></td>
+<td>m/s</td>
+<td>+ closing / − separating</td>
+</tr>
+<tr>
+<td><strong>Environment</strong></td>
+<td>distance-to-boundary, distance-to-obstacles</td>
+<td>m</td>
+<td>arena map</td>
+</tr>
+<tr>
+<td></td>
+<td>occlusion / in-hiding-zone</td>
+<td>bool</td>
+<td>derived occlusion map</td>
+</tr>
+<tr>
+<td><strong>Temporal</strong></td>
+<td>stacked history of the above</td>
+<td>—</td>
+<td>rolling <code>WorldState</code> buffer</td>
+</tr>
+<tr>
+<td><strong>Context</strong> <em>(optional, curated)</em></td>
+<td><code>time_of_day</code>, <code>time_since_last_meal</code>,
+energy/activity level, per-cat identity/embedding</td>
+<td>mixed</td>
+<td><code>SessionContext</code></td>
+</tr>
+</tbody>
+</table>
+<p>Gaze (<code>head_direction</code>, <code>attending_robot</code>) is
+first-class: the emergent optimal move is often to dart when the cat
+looks <em>away</em> and freeze when it is watched. Context features are
+kept deliberately <strong>narrow</strong> — with scarce per-cat data, a
+firehose of features overfits; a small curated set turns hidden
+confounders (hunger, energy, time-of-day) into useful signal.</p>
+<hr />
+<h2 id="5-action-space">5. Action space</h2>
+<p>The learned action is a continuous physical
+<strong><code>MotionCommand</code></strong>
+(<code>brain/contracts/messages.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Units</th>
+<th>Range</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>v_mps</code></td>
+<td>m/s</td>
+<td>≈ ±1.4 (capped)</td>
+<td>target linear velocity</td>
+</tr>
+<tr>
+<td><code>omega_radps</code></td>
+<td>rad/s</td>
+<td>capped</td>
+<td>target angular velocity</td>
+</tr>
+<tr>
+<td><code>duration_s</code></td>
+<td>s</td>
+<td>short horizon</td>
+<td>hold the setpoint</td>
+</tr>
+<tr>
+<td><code>setpoints[]</code></td>
+<td>—</td>
+<td>optional</td>
+<td>short-horizon trajectory</td>
+</tr>
+</tbody>
+</table>
+<p>The Mac emits a <code>MotionCommand</code> at 2–5 Hz; the
+<strong>on-robot PID controller</strong> tracks it at 100+ Hz using
+encoder + IMU feedback; the <strong>safety envelope</strong> (§2.3)
+clamps everything below that. There is no PWM at the learned interface
+and no named-behavior enum — embodiment is deliberately separated from
+behavior, so the same policy can outlive the current chassis.</p>
+<p><strong>Emergent behavior.</strong> All the recognizable "moves" — a
+darting flee, a hesitant feint, a freeze-then-burst, a peek-and-retreat
+around a couch — are windows of continuous control that PPO discovers
+because they earn engagement reward. Notably, <strong>"letting the cat
+win"</strong> is <em>not</em> a hardcoded action: it emerges as a slow,
+trailing trajectory precisely because the <strong>windowed
+reward</strong> (§6) values the <em>future</em> re-engagement a capture
+produces.</p>
+<hr />
+<h2 id="6-reward--engagement">6. Reward — engagement</h2>
+<p>Reward is <strong>windowed / long-horizon</strong> and computed
+entirely from <strong>observable cat behavior</strong> — never from a
+guessed mood. It is defined on top of the recorded evidence, so it can
+evolve without touching the dataset.</p>
+<table>
+<thead>
+<tr>
+<th>Sign</th>
+<th>Signals</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Positive (+)</strong></td>
+<td>cat accelerates toward robot/toy, turns to follow, chases, paws,
+pounces, sustained orientation/attention, renewed pursuit after a pause,
+decreasing distance, longer interaction duration</td>
+</tr>
+<tr>
+<td><strong>Negative (−)</strong></td>
+<td>leaves the play area, attention elsewhere, repeated retreat,
+inactivity, avoidance, stress signs</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Safety events override reward</strong> unconditionally:
+fear/distress, collision, cornering, or unsafe contact trigger
+de-escalation and are never traded for a higher engagement score
+(§2.3).</p>
+<p>The pipeline keeps four layers <strong>strictly separable</strong>
+(<code>brain/contracts/session.py</code>), so the reward definition can
+change without rewriting a single recorded episode:</p>
+<ol type="1">
+<li><strong>Raw observations</strong> — media streams, telemetry, issued
+commands.</li>
+<li><strong>Derived features</strong> — velocities, accelerations,
+distances (pure physics).</li>
+<li><strong>Engagement metrics</strong> — observable cat-behavior
+evidence (not yet a scalar).</li>
+<li><strong>Reward function</strong> — defined <em>on top</em> of layers
+1–3, versioned separately.</li>
+</ol>
+<p>Because reward is windowed, the <strong>optimal capture rate
+emerges</strong> rather than being tuned by hand: never letting the cat
+win breeds frustration; always letting it win breeds boredom; the
+reward-maximizing policy finds the balance for <em>this</em> cat.</p>
+<hr />
+<h2 id="7-what-it-learns--how">7. What it learns / how</h2>
+<p>PetBot learns a cat's <strong>play preferences implicitly from
+interaction history</strong> — nothing is hand-labeled. Different cats
+reward different physics, and the policy discovers each cat's
+tendencies:</p>
+<ul>
+<li>lateral vs. head-on movement,</li>
+<li>preferred approach speed and acceleration profiles,</li>
+<li>the value of pauses, stillness, and sudden reversals,</li>
+<li>aerial ("vertical prey") vs. ground-hugging motion,</li>
+<li>novelty-seeking vs. reward from repetition.</li>
+</ul>
+<p>The mechanism is the reward of §6 applied to the observations of §4:
+the cat's own motion <em>is</em> the training label (self-supervised),
+so the environment hands over the signal for free during ordinary play.
+Across a fleet this becomes a <strong>data flywheel</strong>: pooled
+episodes train the <strong>global prior</strong>, and each robot's local
+episodes drive <strong>per-cat specialization</strong> — more homes make
+every robot better, and every robot still adapts to the animal in front
+of it.</p>
+<hr />
+<h2 id="8-ml-infrastructure">8. ML infrastructure</h2>
+<p><strong>This is the primary deliverable.</strong> PetBot is
+deliberately built as an end-to-end MLOps sandbox, and the builder
+learned ML-systems engineering by <strong>owning every stage</strong> of
+the loop rather than importing a platform. Walking the whole ladder by
+hand is the point: the pain of each missing capability at small scale is
+what makes the reason for each production tool concrete instead of
+cargo-culted.</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>How PetBot exercises it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Multimodal ingestion + time-sync</strong></td>
+<td>Overhead video, onboard video, audio, and 50–100 Hz telemetry are
+stamped to one common clock via a <code>ClockSync</code> handshake and
+per-stream sync offsets. This synchronization is the genuinely hard
+data-engineering problem.</td>
+</tr>
+<tr>
+<td><strong>Episode / data model</strong></td>
+<td>A session <em>is</em> an episode: a folder of multi-stream,
+time-aligned media + an append-only tick log + metadata, with
+<strong>fleet-ready keys</strong> <code>robot_id</code> /
+<code>cat_id</code> / <code>play_area_id</code> and version stamps from
+day one.</td>
+</tr>
+<tr>
+<td><strong>Dataset versioning</strong></td>
+<td>Raw observations are separated from derived features (§6), so
+recomputing features never mutates raw data; both are versioned.</td>
+</tr>
+<tr>
+<td><strong>Feature store</strong></td>
+<td>The stacked-history + curated-context feature view is computed once
+and served identically at train and serve time — closing
+<strong>train/serve skew</strong>.</td>
+</tr>
+<tr>
+<td><strong>Experiment tracking</strong></td>
+<td>Every training run records hyperparameters, dataset version, and
+metrics for reproducibility.</td>
+</tr>
+<tr>
+<td><strong>Model registry</strong></td>
+<td>Policies and dynamics models are swappable, <strong>versioned
+artifacts</strong> (the <code>policy</code> contract), stamped into each
+session's metadata (<code>behavior_policy_version</code>,
+<code>vision_model_version</code>).</td>
+</tr>
+<tr>
+<td><strong>Offline / off-policy evaluation</strong></td>
+<td>New policies are scored against held-out logged episodes as a
+<strong>deploy gate</strong> before any robot runs them.</td>
+</tr>
+<tr>
+<td><strong>Distribution shift</strong></td>
+<td>New cat, new home, new robot, or new toy shifts the input
+distribution; the global-prior-plus-personalization design (§3.5) and
+drift monitoring address it explicitly.</td>
+</tr>
+<tr>
+<td><strong>Closed-loop, non-IID data</strong></td>
+<td>The robot's actions change the <em>future</em> data it collects —
+the data is not IID, which is exactly why PPO is on-policy and why the
+dynamics model + domain randomization matter.</td>
+</tr>
+<tr>
+<td><strong>Model / data / hardware lineage</strong></td>
+<td>Each episode records <code>firmware_version</code>,
+<code>hardware_version</code>, and <code>hardware_config</code> —
+embodiment is logged alongside behavior so results stay attributable
+across chassis changes.</td>
+</tr>
+<tr>
+<td><strong>Staged / canary OTA</strong></td>
+<td>Improved policies deploy to a canary subset of the fleet before a
+full rollout, with rollback.</td>
+</tr>
+<tr>
+<td><strong>Fleet telemetry + drift monitoring</strong></td>
+<td>Aggregated per-cat/per-robot metrics (<code>cat_timeline</code>)
+surface engagement drift and hardware anomalies.</td>
+</tr>
+<tr>
+<td><strong>Federated learning</strong> <em>(optional)</em></td>
+<td>A path to training on the global prior without centralizing raw home
+video.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-bill-of-materials-v0">9. Bill of materials (V0)</h2>
+<p>Every part below has a one-line role confirming it is needed. Prices
+in USD.</p>
+<h3 id="pololu--drivetrain--regulation--112">Pololu — drivetrain +
+regulation (≈ $112)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>#</th>
+<th>Qty</th>
+<th>Cost</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5″ Robot Chassis RRC04A</td>
+<td>1505</td>
+<td>1</td>
+<td>$7.95</td>
+<td>bottom deck (motors/battery/caster mount)</td>
+</tr>
+<tr>
+<td>50:1 Micro Metal Gearmotor HPCB 6V, 12 CPR encoder</td>
+<td>5187</td>
+<td>2</td>
+<td>$64.90</td>
+<td>drive + closed-loop wheel feedback</td>
+</tr>
+<tr>
+<td>Micro Metal Gearmotor bracket pair</td>
+<td>989</td>
+<td>1</td>
+<td>$2.95</td>
+<td>mounts the motors to the plate</td>
+</tr>
+<tr>
+<td>5V 2.5A step-down regulator D24V22F5</td>
+<td>2858</td>
+<td>1</td>
+<td>$18.95</td>
+<td>5 V for ESP32 + ESP32-CAM (no brownout)</td>
+</tr>
+<tr>
+<td>40 mm wheels (pair)</td>
+<td>—</td>
+<td>1</td>
+<td>~$8.00</td>
+<td>traction</td>
+</tr>
+<tr>
+<td>3/8″ ball caster</td>
+<td>—</td>
+<td>1</td>
+<td>~$4.00</td>
+<td>third contact point (balances the puck)</td>
+</tr>
+<tr>
+<td>Mini pushbutton power switch</td>
+<td>2808</td>
+<td>1</td>
+<td>$4.95</td>
+<td>on/off + reverse-voltage protection</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><strong>Subtotal</strong></td>
+<td><strong>≈ $112</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="amazon--electronics-camera-lure-shell--224">Amazon —
+electronics, camera, lure, shell (≈ $224)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Cost</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HiLetgo ESP32 dev board (2-pack)</td>
+<td>$14</td>
+<td>robot MCU: motor control + Wi-Fi</td>
+</tr>
+<tr>
+<td>HiLetgo ESP32-CAM (2-pack + USB)</td>
+<td>$16</td>
+<td>onboard egocentric video logger</td>
+</tr>
+<tr>
+<td>Adafruit TB6612 motor driver</td>
+<td>$5</td>
+<td>drives the two motors</td>
+</tr>
+<tr>
+<td>MPU-6050 IMU (3-pack)</td>
+<td>$8</td>
+<td>heading / acceleration sensing</td>
+</tr>
+<tr>
+<td>Perfboard ~70×90 mm</td>
+<td>$8</td>
+<td>soldered top deck (pounce-proof)</td>
+</tr>
+<tr>
+<td>Dupont jumper kit (120-pc)</td>
+<td>$6</td>
+<td>bench wiring / bring-up</td>
+</tr>
+<tr>
+<td>22 AWG solid-core hookup wire</td>
+<td>$8</td>
+<td>permanent soldered robot wiring</td>
+</tr>
+<tr>
+<td>2S LiPo 7.4 V + charger</td>
+<td>$25</td>
+<td>power</td>
+</tr>
+<tr>
+<td>M3 standoffs + screws</td>
+<td>$8</td>
+<td>deck mounting (two-deck stack)</td>
+</tr>
+<tr>
+<td>Logitech C922x webcam (720p @ 60)</td>
+<td>$85</td>
+<td>overhead privileged camera</td>
+</tr>
+<tr>
+<td>Gooseneck mount</td>
+<td>$15</td>
+<td>overhead camera mount</td>
+</tr>
+<tr>
+<td>Feather refill (9-pack)</td>
+<td>$7</td>
+<td>the lure / prey</td>
+</tr>
+<tr>
+<td>Cat-toy bell</td>
+<td>$5</td>
+<td>prey sound (rings on motion)</td>
+</tr>
+<tr>
+<td>EVA foam sheet</td>
+<td>$8</td>
+<td>protective shell</td>
+</tr>
+<tr>
+<td>Neodymium magnets</td>
+<td>$6</td>
+<td>breakaway feather mount</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Subtotal ≈ $224</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="tools-one-time-if-not-already-owned---43">Tools (one-time, if
+not already owned) — ≈ $43</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Cost</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Soldering iron + solder</td>
+<td>$20</td>
+<td>motor leads, perfboard, headers</td>
+</tr>
+<tr>
+<td>Precision screwdriver set</td>
+<td>$8</td>
+<td>assembly</td>
+</tr>
+<tr>
+<td>Multimeter</td>
+<td>$15</td>
+<td>wiring / power verification</td>
+</tr>
+</tbody>
+</table>
+<h3 id="already-have-0">Already have ($0)</h3>
+<p>Mac (the brain); printed AprilTags + checkerboard calibration
+board.</p>
+<h3 id="total">Total</h3>
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parts (Pololu $112 + Amazon $224)</td>
+<td><strong>$336</strong></td>
+</tr>
+<tr>
+<td>Tools (one-time)</td>
+<td><strong>$43</strong></td>
+</tr>
+<tr>
+<td>Sales tax (≈ 9%)</td>
+<td><strong>≈ $30</strong></td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>≈ $410</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-roadmap">10. Roadmap</h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Scope</th>
+<th>ML-infra lesson</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>V0</strong></td>
+<td>Single robot + overhead-camera scaffold; scripted/random exploration
+→ episode dataset → predictive dynamics; local logging.</td>
+<td>The loop <em>by hand</em> on one machine — schema, provenance, first
+model, basic offline eval.</td>
+</tr>
+<tr>
+<td><strong>V1</strong></td>
+<td>Harden the single-device loop into a real, reproducible
+pipeline.</td>
+<td>Automated/reproducible training, experiment tracking, model
+registry, active-learning labeling.</td>
+</tr>
+<tr>
+<td><strong>V2</strong></td>
+<td>Early fleet — multiple cats/rooms, second robot; centralized
+training.</td>
+<td>Centralized ingestion, aggregated dataset, <strong>global prior +
+per-cat</strong> training, staged OTA.</td>
+</tr>
+<tr>
+<td><strong>V3</strong></td>
+<td>Onboard-perception product + full fleet.</td>
+<td>Production ML platform: distributed ingestion, dataset versioning,
+feature store, continuous training, registry + canary + rollback, drift
+monitoring, edge/OTA, optional federated.</td>
+</tr>
+</tbody>
+</table>
+<p>Same loop the whole way; each version industrializes one more
+piece.</p>
+<hr />
+<h2 id="11-demos">11. Demos</h2>
+<p><em>Videos coming.</em> Recordings of the closed loop — live top-down
+tracking, the robot fleeing a hand-dragged lure, and (once hardware is
+assembled) real cat play sessions with synchronized multi-stream replay
+— will be added here.</p>
+</body>
+</html>
