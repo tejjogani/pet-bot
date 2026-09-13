@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>PetBot — Technical Specification</title>
+  <title>PetBot — Technical Spec</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -174,37 +174,8 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">PetBot — Technical Specification</h1>
+<h1 class="title">PetBot — Technical Spec</h1>
 </header>
-<nav id="TOC" role="doc-toc">
-<ul>
-<li><a href="#petbot--technical-specification"
-id="toc-petbot--technical-specification">PetBot — Technical
-Specification</a>
-<ul>
-<li><a href="#1-overview" id="toc-1-overview">1. Overview</a></li>
-<li><a href="#2-system-architecture" id="toc-2-system-architecture">2.
-System architecture</a></li>
-<li><a href="#3-learning-system--ppo" id="toc-3-learning-system--ppo">3.
-Learning system — PPO</a></li>
-<li><a href="#4-observation--feature-space"
-id="toc-4-observation--feature-space">4. Observation / feature
-space</a></li>
-<li><a href="#5-action-space" id="toc-5-action-space">5. Action
-space</a></li>
-<li><a href="#6-reward--engagement" id="toc-6-reward--engagement">6.
-Reward — engagement</a></li>
-<li><a href="#7-what-it-learns--how" id="toc-7-what-it-learns--how">7.
-What it learns / how</a></li>
-<li><a href="#8-ml-infrastructure" id="toc-8-ml-infrastructure">8. ML
-infrastructure</a></li>
-<li><a href="#9-bill-of-materials-v0" id="toc-9-bill-of-materials-v0">9.
-Bill of materials (V0)</a></li>
-<li><a href="#10-roadmap" id="toc-10-roadmap">10. Roadmap</a></li>
-<li><a href="#11-demos" id="toc-11-demos">11. Demos</a></li>
-</ul></li>
-</ul>
-</nav>
 <h1 id="petbot--technical-specification">PetBot — Technical
 Specification</h1>
 <p><strong>An autonomous mobile robot that plays with a cat like
@@ -848,7 +819,9 @@ video.</td>
 <hr />
 <h2 id="9-bill-of-materials-v0">9. Bill of materials (V0)</h2>
 <p>Every part below has a one-line role confirming it is needed. Prices
-in USD.</p>
+in USD. <strong>The authoritative, priced, decision-locked BOM is
+<code>PARTS_LIST.md</code></strong> — the figures here are indicative
+and the totals below reflect the final measured carts.</p>
 <h3 id="pololu--drivetrain--regulation--112">Pololu — drivetrain +
 regulation (≈ $112)</h3>
 <table>
@@ -977,9 +950,10 @@ electronics, camera, lure, shell (≈ $224)</h3>
 <td>deck mounting (two-deck stack)</td>
 </tr>
 <tr>
-<td>Logitech C922x webcam (720p @ 60)</td>
-<td>$85</td>
-<td>overhead privileged camera</td>
+<td>Logitech C920x webcam (1080p @ 30)</td>
+<td>$59.99</td>
+<td>overhead privileged camera (C922x's 60 fps is decimated by the 2–5
+Hz loop + MJPEG hurts tag accuracy)</td>
 </tr>
 <tr>
 <td>Gooseneck mount</td>
@@ -1054,23 +1028,26 @@ board.</p>
 </thead>
 <tbody>
 <tr>
-<td>Parts (Pololu $112 + Amazon $224)</td>
-<td><strong>$336</strong></td>
+<td>Parts — Pololu $138.83 + Amazon ≈ $341 (final carts)</td>
+<td><strong>≈ $480</strong></td>
 </tr>
 <tr>
-<td>Tools (one-time)</td>
-<td><strong>$43</strong></td>
+<td>Sales tax (<strong>10.75%</strong>) + shipping (not free)</td>
+<td><strong>≈ $43</strong></td>
 </tr>
 <tr>
-<td>Sales tax (≈ 9%)</td>
-<td><strong>≈ $30</strong></td>
+<td>Tools (one-time; screwdriver owned)</td>
+<td><strong>$35</strong></td>
 </tr>
 <tr>
 <td><strong>Total</strong></td>
-<td><strong>≈ $410</strong></td>
+<td><strong>≈ $558</strong></td>
 </tr>
 </tbody>
 </table>
+<p><em>(Final decision-locked figures; see <code>PARTS_LIST.md</code>.
+The earlier "$410" was an under-estimate — real prices, 10.75% tax, and
+non-free shipping.)</em></p>
 <hr />
 <h2 id="10-roadmap">10. Roadmap</h2>
 <table>
