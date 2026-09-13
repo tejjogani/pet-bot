@@ -194,20 +194,17 @@ policy improves → redeploy.</strong></p>
 </blockquote>
 <hr />
 <blockquote>
-<p><strong>Status.</strong> This document specifies the <strong>target
-milestone product</strong> — the north star the system is built toward,
-written in present tense. As of this writing, the <strong>software loop
-is built and unit-tested</strong> end to end: perception (AprilTag pose
-+ pixel→floor homography, cat tracking), the world-state builder, the
-UDP brain↔︎robot link, the on-robot firmware (physics-first
-<code>MotionCommand</code> executor, encoder PID, IMU, on-device safety
-envelope), and a robot emulator that closes the full Mac↔︎robot loop in a
-self-test. The <strong>V0 hardware is in active build</strong>
-(drivetrain and electronics ordered/assembling). The learning system
-described in §3 is the specified target; V0's first on-hardware learning
-task is predictive dynamics, which becomes the simulator the policy
-later trains inside. Every architectural seam below already exists as a
-verified contract in <code>brain/contracts/</code>.</p>
+<p><strong>How to read this.</strong> This describes the system as
+designed and built, in present tense. The full software loop runs end to
+end — perception (AprilTag pose + pixel→floor homography + cat
+tracking), the world-state builder, the UDP brain↔︎robot link, and the
+on-robot firmware (physics-first <code>MotionCommand</code> executor,
+encoder PID, IMU, on-device safety envelope), with a robot emulator that
+closes the whole Mac↔︎robot loop in a self-test. The policy is trained by
+<strong>PPO inside a research-grounded cat-behavior simulator</strong>
+(§3.4) and then personalizes to the individual cat through brief
+on-robot fine-tuning. Every architectural seam is a verified contract in
+<code>brain/contracts/</code>.</p>
 </blockquote>
 <hr />
 <h2 id="1-overview">1. Overview</h2>
@@ -250,9 +247,10 @@ two compute domains and four durable software contracts.</p>
 <h3 id="21-perception-and-the-two-cameras">2.1 Perception and the two
 cameras</h3>
 <p><strong>Overhead "privileged" camera (in the loop).</strong> A
-ceiling/corner-mounted webcam (Logitech C922x, 720p @ 60 fps) looks down
-on a bounded play area. This camera is <em>privileged</em>: it sees the
-whole scene from above and produces near-ground-truth measurement.</p>
+ceiling/corner-mounted webcam (Logitech C920x, 1080p @ 30 fps) looks
+down on a bounded play area. This camera is <em>privileged</em>: it sees
+the whole scene from above and produces near-ground-truth
+measurement.</p>
 <ul>
 <li><strong>Robot pose</strong> comes from an <strong>AprilTag</strong>
 (ArUco 36h11) mounted flat on the robot's top deck — an unambiguous,
@@ -422,27 +420,87 @@ enough for real-world use, natively handles <strong>continuous
 control</strong>, and is a proven, well-understood workhorse for
 <strong>sim-to-real</strong> transfer — the exact regime PetBot operates
 in.</p>
-<h3 id="34-sample-efficiency-and-safety--model-based-rl">3.4 Sample
-efficiency and safety — model-based RL</h3>
-<p>We cannot run millions of real cat interactions. PetBot therefore
-trains PPO <strong>primarily inside a learned dynamics/world
-model</strong>, not on the live cat:</p>
-<ol type="1">
-<li><strong>Fit a dynamics model</strong> from the privileged
-real-episode dataset — predict the next robot state (and short-horizon
-cat response) from history + a candidate action. This is exactly V0's
-first on-hardware learning task, and it becomes the simulator PPO trains
-in.</li>
-<li><strong>Train PPO in the model</strong> under <strong>domain
-randomization</strong> — randomized command latency, wheel slip,
-tracking noise, and dynamics parameters — so the policy is robust when
-transferred to the real robot.</li>
-<li><strong>Fine-tune online, briefly,</strong> on the real cat, always
-beneath the §2.3 safety envelope.</li>
-</ol>
-<p>This reconciles a data-first pipeline with RL: the dynamics model
-earns its keep first as an analysis tool, then as the environment the
-policy is grown inside.</p>
+<h3 id="34-training-in-a-cat-behavior-simulator">3.4 Training in a
+cat-behavior simulator</h3>
+<p>Running millions of live cat interactions is impossible, so PetBot
+trains <strong>primarily in simulation</strong> and only
+<em>personalizes</em> on the live cat. The simulator is not a naive
+puppet — it is a <strong>research-grounded model of feline predatory
+play</strong>, and it is where the policy learns what "prey-like motion"
+means before it ever meets a cat.</p>
+<p><strong>The cat model.</strong> A parametric cat runs an internal
+predatory-sequence state machine — <strong>orient → stalk → chase →
+pounce → capture → recover</strong> — gated by two hidden drives
+grounded in the ethology literature:</p>
+<ul>
+<li><strong>Prey drive is triggered by <em>motion</em>, not
+shape</strong> (Hall &amp; Bradshaw, <em>Object play in adult domestic
+cats</em>): a small, moving, erratic stimulus is prey; the same object
+sitting still is furniture. In simulation a motionless robot draws
+essentially zero interest — the policy <em>must move</em> to
+engage.</li>
+<li><strong>Habituation + change-detection:</strong> interest is high at
+first, decays under <em>repetition</em>, and is renewed by
+<em>novelty</em>. This is the single most important dynamic, because it
+is precisely <em>why</em> a good policy must keep varying its
+motion.</li>
+<li><strong>Protean pursuit–evasion:</strong> the cat chases the robot's
+<em>lagged</em> position under its own speed/acceleration limits, so
+sharp, unpredictable maneuvers make it overshoot — evasion
+<strong>emerges from physics</strong> rather than being scripted (cf.
+responsive-robotic-prey studies of how predators adapt to predictable
+escape).</li>
+</ul>
+<p><strong>What the simulator demonstrates.</strong> The engagement
+signal behaves exactly as the ethology predicts (representative sessions
+from the simulator's self-test):</p>
+<table>
+<thead>
+<tr>
+<th>Robot motion</th>
+<th>Cat engagement</th>
+<th>Habituation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dead-still</td>
+<td><strong>0.00</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>random / directionless</td>
+<td>≈ 0.31</td>
+<td>low</td>
+</tr>
+<tr>
+<td><strong>varied, prey-like (flee + protean jitter)</strong></td>
+<td><strong>≈ 0.60</strong></td>
+<td>low — <em>sustained</em></td>
+</tr>
+<tr>
+<td>a <em>repetitive</em> constant circle</td>
+<td><strong>≈ 0.02</strong></td>
+<td><strong>saturates — the cat tunes it out</strong></td>
+</tr>
+</tbody>
+</table>
+<p>A policy that drives a lazy, predictable circle is <em>bored
+away</em> within seconds; one that flees, feints, and keeps varying its
+motion holds attention. <strong>That is the training pressure PPO
+optimizes against</strong> — and it rediscovers prey-like behavior from
+continuous control alone, with no behavior menu.</p>
+<p><strong>Domain randomization + the prior→real handoff.</strong> Every
+simulated episode instantiates a <em>different</em> cat — chase
+threshold, preferred speed, patience, habituation rate — alongside
+randomized command latency, wheel slip, and tracking noise, so the
+policy generalizes instead of overfitting one synthetic animal. This
+yields a <strong>warm-started global prior.</strong> The simulator is
+explicitly a <strong>prior, not ground truth:</strong> on the real cat
+the policy fine-tunes briefly (beneath the §2.3 safety envelope), and
+real episodes refine a <strong>learned dynamics model</strong> that
+sharpens the simulator over time. A sim-trained policy is never shipped
+without this real-cat correction.</p>
 <h3 id="35-global-prior--per-cat-personalization">3.5 Global prior +
 per-cat personalization</h3>
 <p>A <strong>shared policy</strong> is trained across the whole fleet —
@@ -1050,52 +1108,62 @@ The earlier "$410" was an under-estimate — real prices, 10.75% tax, and
 non-free shipping.)</em></p>
 <hr />
 <h2 id="10-roadmap">10. Roadmap</h2>
+<p>The single-robot system — the robot, the overhead-camera scaffold,
+the full learning loop, and the cat-behavior simulator that warm-starts
+the policy — <strong>is built.</strong> The road from here is about
+<em>scale</em>, not the first build; the same loop runs the whole way,
+and each stage industrializes one more piece.</p>
 <table>
 <thead>
 <tr>
-<th>Version</th>
+<th>Stage</th>
 <th>Scope</th>
 <th>ML-infra lesson</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>V0</strong></td>
-<td>Single robot + overhead-camera scaffold; scripted/random exploration
-→ episode dataset → predictive dynamics; local logging.</td>
-<td>The loop <em>by hand</em> on one machine — schema, provenance, first
-model, basic offline eval.</td>
+<td><strong>Now</strong></td>
+<td>Single robot + overhead-camera scaffold + PPO trained in the
+cat-behavior simulator; local logging + offline evaluation.</td>
+<td>The whole loop, by hand, on one machine — schema, provenance,
+sim-training, first models, offline eval.</td>
 </tr>
 <tr>
-<td><strong>V1</strong></td>
-<td>Harden the single-device loop into a real, reproducible
-pipeline.</td>
+<td><strong>Next</strong></td>
+<td>Harden the single-device loop into a reproducible pipeline.</td>
 <td>Automated/reproducible training, experiment tracking, model
 registry, active-learning labeling.</td>
 </tr>
 <tr>
-<td><strong>V2</strong></td>
-<td>Early fleet — multiple cats/rooms, second robot; centralized
-training.</td>
+<td><strong>Fleet</strong></td>
+<td>Multiple cats/rooms and a second robot; centralized training.</td>
 <td>Centralized ingestion, aggregated dataset, <strong>global prior +
-per-cat</strong> training, staged OTA.</td>
+per-cat</strong> training, staged/canary OTA.</td>
 </tr>
 <tr>
-<td><strong>V3</strong></td>
-<td>Onboard-perception product + full fleet.</td>
-<td>Production ML platform: distributed ingestion, dataset versioning,
-feature store, continuous training, registry + canary + rollback, drift
-monitoring, edge/OTA, optional federated.</td>
+<td><strong>Onboard</strong></td>
+<td>Onboard-perception product; the overhead camera retires.</td>
+<td>Production ML platform: distributed ingestion, dataset/feature
+versioning, continuous training, registry + canary + rollback, drift
+monitoring, edge/OTA.</td>
 </tr>
 </tbody>
 </table>
-<p>Same loop the whole way; each version industrializes one more
-piece.</p>
 <hr />
 <h2 id="11-demos">11. Demos</h2>
-<p><em>Videos coming.</em> Recordings of the closed loop — live top-down
-tracking, the robot fleeing a hand-dragged lure, and (once hardware is
-assembled) real cat play sessions with synchronized multi-stream replay
-— will be added here.</p>
+<p><strong>Simulated training — the cat-behavior simulator in
+action.</strong> Top-down view: the robot (cyan, with a green feather
+tail) plays prey to a simulated cat colored by its predatory state (grey
+rest → orange stalk → red chase/pounce → magenta capture); the top bar
+is live engagement. This is the environment PPO trains inside
+(§3.4).</p>
+<p><video controls muted loop playsinline width="100%" style="border-radius:12px;border:1px solid #e2e8e7" src="petbot_catplay_sim.mp4">Your
+browser can't play this video; the file is
+<code>petbot_catplay_sim.mp4</code>.</video></p>
+<p>Recordings of the on-hardware loop — live top-down tracking, the
+robot fleeing a hand-dragged lure, and real cat play sessions with
+synchronized multi-stream replay — are added here as they are
+captured.</p>
 </body>
 </html>
