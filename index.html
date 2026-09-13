@@ -356,75 +356,90 @@ OTA).</td>
 </tbody>
 </table>
 <hr />
-<h2 id="3-learning-system--ppo">3. Learning system — PPO</h2>
-<h3 id="31-physics-first-behaviors-emerge">3.1 Physics-first: behaviors
-emerge</h3>
-<p>The learned action space is <strong>continuous physical
-control</strong> — target velocities over a short horizon — <em>not</em>
-a menu of named behaviors. There is no <code>flee</code>,
-<code>feint</code>, <code>freeze-burst</code>,
-<code>peek-retreat</code>, or <code>allow-capture</code> in the action
-vocabulary. Those are <strong>emergent</strong>: they arise from the
-continuous control space and are only ever used afterward as analysis
-labels. We commit to this because we <em>do not know in advance</em>
-which motions engage a given cat; hard-coding a behavior menu would
-foreclose exactly the discovery the project exists to make.</p>
-<h3 id="32-rl-formulation">3.2 RL formulation</h3>
-<p>PetBot is a <strong>POMDP</strong> (the true cat state — hunger,
-arousal, intent — is never directly observed):</p>
-<ul>
-<li><strong>Observation</strong> <code>o_t</code>: the physics-only
-feature vector of §4, stacked over a short history window.</li>
-<li><strong>Action</strong> <code>a_t</code>: a continuous
-<code>MotionCommand</code> (§5).</li>
-<li><strong>Reward</strong> <code>r_t</code>: the windowed engagement
-signal of §6, with safety overrides.</li>
-<li><strong>Policy</strong> <code>π_θ(a | o)</code>: the
-<strong>actor</strong>.</li>
-<li><strong>Value</strong> <code>V_φ(o)</code>: the
-<strong>critic</strong>, estimating expected return.</li>
-</ul>
-<h3 id="33-ppo-specifics">3.3 PPO specifics</h3>
-<p>The target learning method is <strong>Proximal Policy
-Optimization</strong> — on-policy actor-critic.</p>
-<ul>
-<li><strong>Clipped surrogate objective.</strong> Updates maximize
-<code>min( ρ_t·Â_t , clip(ρ_t, 1−ε, 1+ε)·Â_t )</code>, where
-<code>ρ_t = π_θ(a_t|o_t) / π_θ_old(a_t|o_t)</code> is the probability
-ratio and <code>ε ≈ 0.2</code>. Clipping bounds how far each update can
-move the policy, preventing the destructive large steps that make naive
-policy gradients unstable.</li>
-<li><strong>Generalized Advantage Estimation (GAE)</strong> with
-<code>λ ≈ 0.95</code>, <code>γ ≈ 0.99</code>, trading bias against
-variance in the advantage estimate <code>Â_t</code>.</li>
-<li><strong>Composite loss:</strong> clipped policy loss +
-value-function loss (MSE of <code>V_φ</code> against returns) + an
-<strong>entropy bonus</strong> to sustain exploration.</li>
-<li><strong>Multiple minibatch epochs</strong> per collected rollout (≈
-4–10 epochs, minibatches of ≈ 64), reusing each batch of on-policy data
-before discarding it.</li>
-<li><strong>Continuous actions via a Gaussian policy:</strong> the actor
-outputs a state-dependent mean <code>μ_θ(o)</code> and a learned
-(state-independent) log-standard-deviation per action dimension; actions
-are sampled <code>a ~ N(μ_θ(o), σ²)</code> and squashed into the safe
-range.</li>
-</ul>
-<p><strong>Network.</strong> Both actor and critic are MLPs over the
-stacked observation: <strong>2–3 hidden layers × 256 units</strong>,
-<code>tanh</code> activations, a shared trunk with separate heads. The
-observation is low-dimensional physics (§4), so a modest MLP is
-appropriate — there are no pixels at this interface.</p>
-<p><strong>Why PPO.</strong> It is stable and forgiving of
-hyperparameters (the clip keeps it from diverging), sample-efficient
-enough for real-world use, natively handles <strong>continuous
-control</strong>, and is a proven, well-understood workhorse for
-<strong>sim-to-real</strong> transfer — the exact regime PetBot operates
-in.</p>
-<h3 id="34-training-in-a-cat-behavior-simulator">3.4 Training in a
-cat-behavior simulator</h3>
-<p>Running millions of live cat interactions is impossible, so PetBot
-trains <strong>primarily in simulation</strong> and only
-<em>personalizes</em> on the live cat. The simulator is not a naive
+<h2 id="3-from-research-to-policy">3. From research to policy</h2>
+<p>The learning pipeline runs in four stages, in order: <strong>(1)
+encode the ethology research</strong> into the moves that engage a cat
+and the signal that rewards them, <strong>(2) build an RL
+environment</strong> around a research-grounded cat, <strong>(3) grow a
+world model</strong> for sample-efficient, safe training, and
+<strong>(4) train the policy with PPO</strong> — which rediscovers those
+moves from continuous control alone.</p>
+<h3 id="31-pre-rl--the-moves-research-says-make-a-cat-play">3.1 Pre-RL —
+the moves research says make a cat play</h3>
+<p>Before any learning, the question is <em>what should the robot's
+motion actually do?</em> Decades of feline-behavior research answer it.
+These are the moves that measurably spike engagement — each grounded,
+not guessed:</p>
+<table>
+<thead>
+<tr>
+<th>Move</th>
+<th>What the robot does</th>
+<th>Why it works (research)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Motion is the prey</strong></td>
+<td>move at all; a still robot is furniture</td>
+<td>Object play is triggered by <em>movement</em>, small size, and
+texture — not shape. <em>(Hall &amp; Bradshaw, Object play in adult
+domestic cats)</em></td>
+</tr>
+<tr>
+<td><strong>Flee on contact / attention</strong></td>
+<td>dart <em>away</em> the instant the cat locks on or lunges</td>
+<td>Fleeing prey releases the chase; prey that approaches the predator
+does not.</td>
+</tr>
+<tr>
+<td><strong>Gaze-contingent darting</strong></td>
+<td>move when the cat looks <em>away</em>, freeze when it's watched</td>
+<td>Cats orient to motion <em>onset</em>; darting in the blind moment
+and freezing under direct gaze mimics real prey.</td>
+</tr>
+<tr>
+<td><strong>Freeze-then-burst</strong></td>
+<td>hold still, then a sudden acceleration</td>
+<td>A sudden move after stillness triggers the pounce far more than
+steady motion.</td>
+</tr>
+<tr>
+<td><strong>Protean (unpredictable) escape</strong></td>
+<td>vary direction and speed unpredictably</td>
+<td>Predators <em>counter-adapt</em> to predictable prey; unpredictable
+escape sustains pursuit. <em>(responsive-robotic-prey studies;
+optimal-vs-protean escape models)</em></td>
+</tr>
+<tr>
+<td><strong>Never repeat for long</strong></td>
+<td>keep changing the trajectory</td>
+<td>Interest <em>habituates</em> without change and is renewed by
+novelty. <em>(Hall &amp; Bradshaw change-detection)</em></td>
+</tr>
+<tr>
+<td><strong>Let the cat win — sometimes</strong></td>
+<td>allow the occasional capture, then re-engage</td>
+<td>Never winning breeds frustration; always winning breeds boredom;
+sustained play is a per-cat balance.</td>
+</tr>
+<tr>
+<td><strong>Small, low, ground-hugging</strong></td>
+<td>stay a small, low, fast target</td>
+<td>Prey-like size and profile; a low puck reads as prey, not a
+threat.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>None of these are hard-coded as robot behaviors.</strong>
+They define <em>what to reward</em> (§6) and <em>how the simulated cat
+reacts</em> (§3.2). The policy <strong>rediscovers them on its
+own</strong> from continuous physical control — we don't program "flee,"
+we reward engagement and watch fleeing emerge (§3.4).</p>
+<h3 id="32-the-rl-environment--a-research-grounded-cat">3.2 The RL
+environment — a research-grounded cat</h3>
+<p>The moves above are compiled into a <strong>parametric cat</strong>
+that turns the priors into a trainable environment. It is not a naive
 puppet — it is a <strong>research-grounded model of feline predatory
 play</strong>, and it is where the policy learns what "prey-like motion"
 means before it ever meets a cat.</p>
@@ -490,17 +505,60 @@ away</em> within seconds; one that flees, feints, and keeps varying its
 motion holds attention. <strong>That is the training pressure PPO
 optimizes against</strong> — and it rediscovers prey-like behavior from
 continuous control alone, with no behavior menu.</p>
-<p><strong>Domain randomization + the prior→real handoff.</strong> Every
-simulated episode instantiates a <em>different</em> cat — chase
-threshold, preferred speed, patience, habituation rate — alongside
-randomized command latency, wheel slip, and tracking noise, so the
-policy generalizes instead of overfitting one synthetic animal. This
-yields a <strong>warm-started global prior.</strong> The simulator is
-explicitly a <strong>prior, not ground truth:</strong> on the real cat
-the policy fine-tunes briefly (beneath the §2.3 safety envelope), and
-real episodes refine a <strong>learned dynamics model</strong> that
-sharpens the simulator over time. A sim-trained policy is never shipped
-without this real-cat correction.</p>
+<h3 id="33-the-world-model--sample-efficient-safe-training">3.3 The
+world model — sample-efficient, safe training</h3>
+<p>Running millions of live cat interactions is impossible, so PPO
+trains <strong>in a model, not on the animal.</strong> Two models
+compound: the <strong>research-grounded cat prior</strong> (§3.2) gives
+a warm start with <em>zero</em> real data, and a <strong>learned
+dynamics model</strong> — fit from real episodes to predict the next
+state (robot + short-horizon cat response) from history + action —
+sharpens the simulator as real play accumulates. Both run under
+<strong>domain randomization</strong>: every episode instantiates a
+<em>different</em> cat (chase threshold, speed, patience, habituation
+rate) with randomized command latency, wheel slip, and tracking noise,
+so the policy is robust in transfer. The simulator is explicitly a
+<strong>prior, not ground truth</strong> — the policy warm-starts here,
+then <strong>fine-tunes briefly on the real cat</strong> beneath the
+§2.3 safety envelope, and a sim-only policy is never shipped.</p>
+<h3 id="34-the-policy--ppo">3.4 The policy — PPO</h3>
+<p>The action space is <strong>continuous physical control</strong> —
+target velocities over a short horizon — <em>not</em> a menu of named
+behaviors. There is no <code>flee</code>, <code>feint</code>,
+<code>freeze-burst</code>, or <code>allow-capture</code> in the
+vocabulary; those are <strong>emergent</strong> analysis labels.
+Hard-coding a behavior menu would foreclose the discovery the project
+exists to make.</p>
+<p>PetBot is a <strong>POMDP</strong> — the true cat state (hunger,
+arousal, intent) is never directly observed. Observation
+<code>o_t</code> = the physics history window (§4); action
+<code>a_t</code> = a <code>MotionCommand</code> (§5); reward
+<code>r_t</code> = windowed engagement (§6); <code>π_θ</code> = actor,
+<code>V_φ</code> = critic.</p>
+<p>The learner is <strong>Proximal Policy Optimization</strong> —
+on-policy actor-critic:</p>
+<ul>
+<li><strong>Clipped surrogate objective</strong>
+<code>min(ρ_t·Â_t, clip(ρ_t, 1−ε, 1+ε)·Â_t)</code>,
+<code>ρ_t = π_θ/π_θ_old</code>, <code>ε ≈ 0.2</code> — bounds each
+update so it can't take a destructive step.</li>
+<li><strong>GAE</strong> (<code>λ ≈ 0.95</code>, <code>γ ≈ 0.99</code>)
+trades bias vs. variance in <code>Â_t</code>.</li>
+<li><strong>Composite loss:</strong> clipped policy loss + value MSE +
+an <strong>entropy bonus</strong> for exploration.</li>
+<li><strong>≈ 4–10 minibatch epochs</strong> per rollout (minibatches ≈
+64), reusing on-policy data before discarding it.</li>
+<li><strong>Gaussian continuous policy:</strong> the actor emits a
+state-dependent mean and a learned log-std per action dimension; actions
+are sampled and squashed into the <strong>normalized [−1, 1]</strong>
+range, then rescaled to physical <code>(v, ω)</code>.</li>
+</ul>
+<p><strong>Network:</strong> actor + critic MLPs over the stacked
+observation — 2–3 hidden layers × 256, <code>tanh</code>, shared trunk,
+separate heads; low-dim physics, no pixels, so a small MLP suffices.
+<strong>Why PPO:</strong> stable, hyperparameter-forgiving,
+sample-efficient, natively continuous, and a proven
+<strong>sim-to-real</strong> workhorse — exactly PetBot's regime.</p>
 <h3 id="35-global-prior--per-cat-personalization">3.5 Global prior +
 per-cat personalization</h3>
 <p>A <strong>shared policy</strong> is trained across the whole fleet —
@@ -875,237 +933,18 @@ video.</td>
 </tbody>
 </table>
 <hr />
-<h2 id="9-bill-of-materials-v0">9. Bill of materials (V0)</h2>
-<p>Every part below has a one-line role confirming it is needed. Prices
-in USD. <strong>The authoritative, priced, decision-locked BOM is
-<code>PARTS_LIST.md</code></strong> — the figures here are indicative
-and the totals below reflect the final measured carts.</p>
-<h3 id="pololu--drivetrain--regulation--112">Pololu — drivetrain +
-regulation (≈ $112)</h3>
-<table>
-<thead>
-<tr>
-<th>Item</th>
-<th>#</th>
-<th>Qty</th>
-<th>Cost</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>5″ Robot Chassis RRC04A</td>
-<td>1505</td>
-<td>1</td>
-<td>$7.95</td>
-<td>bottom deck (motors/battery/caster mount)</td>
-</tr>
-<tr>
-<td>50:1 Micro Metal Gearmotor HPCB 6V, 12 CPR encoder</td>
-<td>5187</td>
-<td>2</td>
-<td>$64.90</td>
-<td>drive + closed-loop wheel feedback</td>
-</tr>
-<tr>
-<td>Micro Metal Gearmotor bracket pair</td>
-<td>989</td>
-<td>1</td>
-<td>$2.95</td>
-<td>mounts the motors to the plate</td>
-</tr>
-<tr>
-<td>5V 2.5A step-down regulator D24V22F5</td>
-<td>2858</td>
-<td>1</td>
-<td>$18.95</td>
-<td>5 V for ESP32 + ESP32-CAM (no brownout)</td>
-</tr>
-<tr>
-<td>40 mm wheels (pair)</td>
-<td>—</td>
-<td>1</td>
-<td>~$8.00</td>
-<td>traction</td>
-</tr>
-<tr>
-<td>3/8″ ball caster</td>
-<td>—</td>
-<td>1</td>
-<td>~$4.00</td>
-<td>third contact point (balances the puck)</td>
-</tr>
-<tr>
-<td>Mini pushbutton power switch</td>
-<td>2808</td>
-<td>1</td>
-<td>$4.95</td>
-<td>on/off + reverse-voltage protection</td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td><strong>Subtotal</strong></td>
-<td><strong>≈ $112</strong></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<h3 id="amazon--electronics-camera-lure-shell--224">Amazon —
-electronics, camera, lure, shell (≈ $224)</h3>
-<table>
-<thead>
-<tr>
-<th>Item</th>
-<th>Cost</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>HiLetgo ESP32 dev board (2-pack)</td>
-<td>$14</td>
-<td>robot MCU: motor control + Wi-Fi</td>
-</tr>
-<tr>
-<td>HiLetgo ESP32-CAM (2-pack + USB)</td>
-<td>$16</td>
-<td>onboard egocentric video logger</td>
-</tr>
-<tr>
-<td>Adafruit TB6612 motor driver</td>
-<td>$5</td>
-<td>drives the two motors</td>
-</tr>
-<tr>
-<td>MPU-6050 IMU (3-pack)</td>
-<td>$8</td>
-<td>heading / acceleration sensing</td>
-</tr>
-<tr>
-<td>Perfboard ~70×90 mm</td>
-<td>$8</td>
-<td>soldered top deck (pounce-proof)</td>
-</tr>
-<tr>
-<td>Dupont jumper kit (120-pc)</td>
-<td>$6</td>
-<td>bench wiring / bring-up</td>
-</tr>
-<tr>
-<td>22 AWG solid-core hookup wire</td>
-<td>$8</td>
-<td>permanent soldered robot wiring</td>
-</tr>
-<tr>
-<td>2S LiPo 7.4 V + charger</td>
-<td>$25</td>
-<td>power</td>
-</tr>
-<tr>
-<td>M3 standoffs + screws</td>
-<td>$8</td>
-<td>deck mounting (two-deck stack)</td>
-</tr>
-<tr>
-<td>Logitech C920x webcam (1080p @ 30)</td>
-<td>$59.99</td>
-<td>overhead privileged camera (C922x's 60 fps is decimated by the 2–5
-Hz loop + MJPEG hurts tag accuracy)</td>
-</tr>
-<tr>
-<td>Gooseneck mount</td>
-<td>$15</td>
-<td>overhead camera mount</td>
-</tr>
-<tr>
-<td>Feather refill (9-pack)</td>
-<td>$7</td>
-<td>the lure / prey</td>
-</tr>
-<tr>
-<td>Cat-toy bell</td>
-<td>$5</td>
-<td>prey sound (rings on motion)</td>
-</tr>
-<tr>
-<td>EVA foam sheet</td>
-<td>$8</td>
-<td>protective shell</td>
-</tr>
-<tr>
-<td>Neodymium magnets</td>
-<td>$6</td>
-<td>breakaway feather mount</td>
-</tr>
-<tr>
-<td></td>
-<td><strong>Subtotal ≈ $224</strong></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<h3 id="tools-one-time-if-not-already-owned---43">Tools (one-time, if
-not already owned) — ≈ $43</h3>
-<table>
-<thead>
-<tr>
-<th>Item</th>
-<th>Cost</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Soldering iron + solder</td>
-<td>$20</td>
-<td>motor leads, perfboard, headers</td>
-</tr>
-<tr>
-<td>Precision screwdriver set</td>
-<td>$8</td>
-<td>assembly</td>
-</tr>
-<tr>
-<td>Multimeter</td>
-<td>$15</td>
-<td>wiring / power verification</td>
-</tr>
-</tbody>
-</table>
-<h3 id="already-have-0">Already have ($0)</h3>
-<p>Mac (the brain); printed AprilTags + checkerboard calibration
-board.</p>
-<h3 id="total">Total</h3>
-<table>
-<thead>
-<tr>
-<th>Line</th>
-<th>Cost</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Parts — Pololu $138.83 + Amazon ≈ $341 (final carts)</td>
-<td><strong>≈ $480</strong></td>
-</tr>
-<tr>
-<td>Sales tax (<strong>10.75%</strong>) + shipping (not free)</td>
-<td><strong>≈ $43</strong></td>
-</tr>
-<tr>
-<td>Tools (one-time; screwdriver owned)</td>
-<td><strong>$35</strong></td>
-</tr>
-<tr>
-<td><strong>Total</strong></td>
-<td><strong>≈ $558</strong></td>
-</tr>
-</tbody>
-</table>
-<p><em>(Final decision-locked figures; see <code>PARTS_LIST.md</code>.
-The earlier "$410" was an under-estimate — real prices, 10.75% tax, and
-non-free shipping.)</em></p>
+<h2 id="9-hardware">9. Hardware</h2>
+<p>PetBot is a small differential-drive "puck": a laser-cut chassis, two
+<strong>encoder micro-gearmotors</strong> driven by an
+<strong>ESP32</strong> (with an IMU and an on-device safety envelope), a
+soft <strong>breakaway feather</strong> lure, and a foam shell — plus an
+<strong>overhead webcam</strong> that gives the privileged,
+near-ground-truth view of the play area. Everything on the robot is
+off-the-shelf hobby electronics.</p>
+<p>Building one is a weekend hardware project. The <strong>full itemized
+parts list</strong> (with links) and a <strong>step-by-step build
+guide</strong> (wiring, bring-up order, safety) live alongside this spec
+— see <code>PARTS_LIST.md</code> and <code>BUILD_GUIDE.md</code>.</p>
 <hr />
 <h2 id="10-roadmap">10. Roadmap</h2>
 <p>The single-robot system — the robot, the overhead-camera scaffold,
