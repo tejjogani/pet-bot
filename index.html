@@ -570,6 +570,43 @@ specializes quickly via lightweight per-cat adaptation (fine-tuning
 and/or context conditioning on a per-cat identity embedding). This is
 the data flywheel of §7: the fleet lifts the prior; each robot
 personalizes locally.</p>
+<h3 id="36-the-dataset--toward-a-data-driven-cat-prior">3.6 The dataset
+— toward a data-driven cat prior</h3>
+<p>Today's cat model (§3.2) is <em>hand-authored</em> from the ethology
+literature — a principled starting guess. The next version replaces it
+with a <strong>data-driven prior learned from real cat play</strong>,
+and the dataset that powers it is built from two sources:</p>
+<ul>
+<li><strong>Self-filmed (gold).</strong> A phone or webcam
+<strong>mounted</strong> over a play area records a human flicking a
+wand toy for the cat. Because the camera is fixed and calibrated — the
+<em>same</em> homography the robot uses — every clip yields
+<strong>paired, metric <code>(stimulus → cat response)</code></strong>
+data in true floor coordinates.</li>
+<li><strong>Scraped (volume).</strong> Wand-toy and laser clips from
+YouTube / Instagram / TikTok, where <em>both</em> the toy and the cat
+are visible, add breadth quickly — behind a human
+<strong>flag-and-approve</strong> review pass that keeps only clean
+clips.</li>
+</ul>
+<p><strong>One representation, many sources.</strong> Clips differ
+wildly in size, aspect ratio, framerate, and camera shake, so we keep
+the <strong>trajectories, not the pixels</strong>: track the cat and the
+toy, normalize by the cat's apparent body length (~46 cm) into metric
+units, compensate global camera motion for handheld footage, and reduce
+everything to the <strong>relative geometry</strong> — distance,
+bearing, closing velocity — that <em>mirrors the policy's own
+<code>WorldState.Relative</code> observation</em>. That representation
+is naturally invariant to resolution and to camera translation, so a 4K
+landscape clip and a shaky portrait one collapse into the same schema as
+the robot's real episodes.</p>
+<p><strong>The handoff.</strong> This dataset <strong>pretrains</strong>
+the data-driven cat-response model (§3.3); PPO trains the policy inside
+it; and each robot <strong>fine-tunes on its own cat</strong> — the same
+global-prior-plus-personalization flywheel (§3.5), now grounded in
+observed behavior instead of a heuristic. It is the direct upgrade to
+the honest weak point of the current design: the cat prior stops being a
+guess.</p>
 <hr />
 <h2 id="4-observation--feature-space">4. Observation / feature
 space</h2>
@@ -972,9 +1009,11 @@ sim-training, first models, offline eval.</td>
 </tr>
 <tr>
 <td><strong>Next</strong></td>
-<td>Harden the single-device loop into a reproducible pipeline.</td>
-<td>Automated/reproducible training, experiment tracking, model
-registry, active-learning labeling.</td>
+<td>Harden the single-device loop; build the <strong>data-driven cat
+prior</strong> (§3.6) from self-filmed + scraped play video.</td>
+<td>Reproducible training, experiment tracking, model registry, a real
+<strong>data pipeline</strong> (scrape → review → track → dataset),
+active-learning labeling.</td>
 </tr>
 <tr>
 <td><strong>Fleet</strong></td>
