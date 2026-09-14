@@ -182,12 +182,14 @@ Specification</h1>
 interactive prey, and learns how <em>your</em> cat likes to
 play.</strong></p>
 <p>PetBot is a small, overhead-camera-instrumented, differential-drive
-"puck" wearing a soft feather lure. An ESP32 drives the wheels; a Mac
-(later, the cloud) is the ML brain. Rather than replaying a fixed
-library of human-authored moves, PetBot treats <em>motion itself</em> as
-the prey and <strong>learns the individual cat</strong> from how that
-cat responds. The deliverable is not the robot — it is the closed
-learning loop:</p>
+"puck" wearing a soft feather lure. Put plainly, it's a <strong>robotic
+mouse</strong> — a small, ground-dwelling prey whose entire job is to be
+<em>just</em> annoying enough that your cat can't stop chasing it. An
+ESP32 drives the wheels; a Mac (later, the cloud) is the ML brain.
+Rather than replaying a fixed library of human-authored moves, PetBot
+treats <em>motion itself</em> as the prey and <strong>learns the
+individual cat</strong> from how that cat responds. The deliverable is
+not the robot — it is the closed learning loop:</p>
 <blockquote>
 <p><strong>robot acts → cat responds → response is measured → data →
 policy improves → redeploy.</strong></p>
